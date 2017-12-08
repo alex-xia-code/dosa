@@ -59,26 +59,25 @@ func NewConnector(cfg Config, connectorMap map[string]dosa.Connector, plugin Plu
 
 // get connector by scope, namePrefix and operation name provided
 func (rc *Connector) getConnector(scope string, namePrefix string, opName string) (_ dosa.Connector, err error) {
+	var shouldFail bool
 	if rc.PluginFunc != nil {
 		// plugin operation
 		// plugin should always be first considered if it exists
-		var fallToDefaultConn bool
-		scope, namePrefix, fallToDefaultConn, err = rc.PluginFunc(scope, namePrefix, opName)
+		scope, namePrefix, shouldFail, err = rc.PluginFunc(scope, namePrefix, opName)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to execute getConnector due to Plugin function error")
 		}
-
-		if !fallToDefaultConn {
-			return nil, errors.New("requests failed because they are explicitly set to fail")
-		}
 	}
-	return rc._getConnector(scope, namePrefix)
+	return rc._getConnector(scope, namePrefix, shouldFail)
 }
 
 // if no specific scope is found,
 // Connector routes to the default scope that defined in routing config yaml file
-func (rc *Connector) _getConnector(scope, namePrefix string) (dosa.Connector, error) {
-	router := rc.config.FindRouter(scope, namePrefix)
+func (rc *Connector) _getConnector(scope, namePrefix string, shouldFail bool) (dosa.Connector, error) {
+	router, err := rc.config.FindRouter(scope, namePrefix, shouldFail)
+	if err != nil {
+		return nil, errors.Wrap(err, "get connector failure")
+	}
 
 	c, ok := rc.connectors[router.Connector]
 	if !ok {

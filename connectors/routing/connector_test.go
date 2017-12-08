@@ -202,18 +202,9 @@ func TestGetConnector(t *testing.T) {
 	assert.NotNil(t, conn)
 	assert.Equal(t, reflect.TypeOf(conn), reflect.TypeOf(memory.NewConnector()))
 
-	// with plugin
-	rc.PluginFunc = func(scope, namePrefix, opName string) (string, string, bool, error) {
-		return "ebook", "ebook-store", true, nil
-	}
-
-	conn, err = rc.getConnector(ei.Ref.Scope, ei.Ref.NamePrefix, "Read")
-	assert.NoError(t, err)
-	assert.NotNil(t, conn)
-
 	// plugin indicates to throw out error rather than fall into default connector
 	rc.PluginFunc = func(scope, namePrefix, opName string) (string, string, bool, error) {
-		return "", "", false, nil
+		return "", "", true, nil
 	}
 	conn, err = rc.getConnector(ei.Ref.Scope, ei.Ref.NamePrefix, "Read")
 	assert.Contains(t, err.Error(), "requests failed because they are explicitly set to fail")
