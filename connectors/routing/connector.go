@@ -30,8 +30,8 @@ import (
 )
 
 // PluginFunc is a plugin function that takes scope, namePrefix and operation name,
-// then gives wanted scope and namePrefix
-type PluginFunc func(scope, namePrefix, opName string) (string, string, error)
+// then gives wanted scope and namePrefix, and whether to fall into default connector
+type PluginFunc func(scope, namePrefix, opName string) (string, string, bool, error)
 
 // Connector holds a slice of configured connectors to route to
 type Connector struct {
@@ -62,9 +62,14 @@ func (rc *Connector) getConnector(scope string, namePrefix string, opName string
 	if rc.PluginFunc != nil {
 		// plugin operation
 		// plugin should always be first considered if it exists
-		scope, namePrefix, err = rc.PluginFunc(scope, namePrefix, opName)
+		var fallToDefaultConn bool
+		scope, namePrefix, fallToDefaultConn, err = rc.PluginFunc(scope, namePrefix, opName)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to execute getConnector due to Plugin function error")
+		}
+
+		if !fallToDefaultConn {
+			return nil, errors.New("requests failed because they are explicitly set to fail")
 		}
 	}
 	return rc._getConnector(scope, namePrefix)
